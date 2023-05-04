@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Body
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 app = FastAPI()
@@ -9,10 +9,20 @@ app.version = "0.0.1"
 
 class User(BaseModel):
     id: Optional[int] = None 
-    name : str
-    mail : str
-    city : str
-    initDate : str
+    name : str = Field(min_length=5, max_length=50)
+    mail : str = Field(min_length=5, max_length=50)
+    city : str = Field(min_length=5, max_length=50)
+    initDate : Optional[str] = None 
+    class Config:
+        schema_extra = {
+            'example': {
+                'id' : 1,
+                'name' : 'Nombre',
+                'mail' : 'Correo Electronico, sera el validador de usuario',
+                'city' : 'Ciudad',
+                'initDate' : 'Fecha de inscripccion'
+            }
+        }
 
 users = [
     {
