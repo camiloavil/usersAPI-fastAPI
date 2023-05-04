@@ -1,9 +1,18 @@
 from fastapi import FastAPI, Body
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI()
 app.title = "Users API"
 app.version = "0.0.1"
+
+class User(BaseModel):
+    id: Optional[int] = None 
+    name : str
+    mail : str
+    city : str
+    initDate : str
 
 users = [
     {
@@ -39,24 +48,18 @@ def get_user_by_city(city:str):
     return [user for user in users if user['city'] == city]
 
 @app.post('/user', tags=['users'])
-def create_user(id:int=Body(),name:str=Body(),mail:str=Body(),city:str=Body(),initDate:str=Body()):
-    users.append({
-        'id'   : id,  
-        'name' : name,
-        'mail' : mail,
-        'city' : city,
-        'initDate' : initDate
-    })
+def create_user(user:User):
+    users.append(user)
     return ['User added']
 
 @app.put('/user/{id}', tags=['users'])
-def update_user(id:int,name:str=Body(),mail:str=Body(),city:str=Body(),initDate:str=Body()):
-    user = [user for user in users if user['id'] == id]
-    if len(user) == 1:
-        user[0]['name']=name
-        user[0]['mail']=mail
-        user[0]['city']=city
-        user[0]['initDate']=initDate
+def update_user(id:int, user:User):
+    userFiltered = [user for user in users if user['id'] == id]
+    if len(userFiltered) == 1:
+        userFiltered[0]['name']=user.name
+        userFiltered[0]['mail']=user.mail
+        userFiltered[0]['city']=user.city
+        userFiltered[0]['initDate']=user.initDate
         return [{'message':f'User id:{id} updated correctly'}]
     else:
         return [{'message':f'Error id:{id} not Found'}]
