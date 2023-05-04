@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Path, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
+from datetime import datetime
 from typing import Optional
 
 app = FastAPI()
@@ -12,11 +13,11 @@ class User(BaseModel):
     name : str = Field(min_length=5, max_length=50)
     mail : str = Field(min_length=5, max_length=50)
     city : str = Field(min_length=5, max_length=50)
-    initDate : Optional[str] = None 
+    initDate : Optional[datetime] = None 
     class Config:
         schema_extra = {
             'example': {
-                'id' : 1,
+                'id' : 'Identifier',
                 'name' : 'Nombre',
                 'mail' : 'Correo Electronico, sera el validador de usuario',
                 'city' : 'Ciudad',
@@ -50,11 +51,11 @@ def get_users():
     return users
 
 @app.get('/user/{id}', tags=['users'])
-def get_user(id: int):
+def get_user(id: int = Path(ge=1)):
     return [user for user in users if user['id'] == id]
 
 @app.get('/users/', tags=['users'])
-def get_user_by_city(city:str):
+def get_user_by_city(city:str = Query(min_length=2,max_length=20)):
     return [user for user in users if user['city'] == city]
 
 @app.post('/user', tags=['users'])
