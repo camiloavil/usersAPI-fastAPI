@@ -32,11 +32,8 @@ def get_users():
 
 @app.get('/user/{id}', tags=['users'])
 def get_user(id: int):
-    for user in users:
-        if user['id']==id:
-            return user
-    return []
+    return [user for user in users if user['id'] == id]
 
 @app.get('/users/', tags=['users'])
 def get_user_by_city(city:str):
-    return []
+    return [user for user in users if user['city'] == city]
