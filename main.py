@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Path, Query
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Path, Query, status
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 app = FastAPI()
 app.title = "Users API"
@@ -46,40 +46,48 @@ users = [
 def home():
     return HTMLResponse('<h1>Hello You</h1>')
 
-@app.get('/users', tags=['users'])
-def get_users():
-    return users
+@app.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK)
+def get_users() -> List[User]:
+    return JSONResponse(status_code=status.HTTP_200_OK, content=users)
 
-@app.get('/user/{id}', tags=['users'])
-def get_user(id: int = Path(ge=1)):
-    return [user for user in users if user['id'] == id]
+@app.get('/user/{id}', tags=['users'], response_model=User, status_code=status.HTTP_200_OK)
+def get_user(id: int = Path(ge=1)) -> User:
+    data = [user for user in users if user['id'] == id]
+    if len(data)==1:
+        return JSONResponse(status_code=status.HTTP_200_OK,content= data)
+    else:
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= data)
 
-@app.get('/users/', tags=['users'])
-def get_user_by_city(city:str = Query(min_length=2,max_length=20)):
-    return [user for user in users if user['city'] == city]
+@app.get('/users/', tags=['users'],response_model=List[User],status_code=status.HTTP_200_OK)
+def get_user_by_city(city:str = Query(min_length=2,max_length=20)) -> List[User]:
+    data = [user for user in users if user['city'] == city]
+    if len(data)==0:
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content=data) #Not Found
+    else:
+        return JSONResponse(status_code=status.HTTP_200_OK,content=data) #Not Found
 
-@app.post('/user', tags=['users'])
-def create_user(user:User):
+@app.post('/user', tags=['users'],response_model=dict,status_code=status.HTTP_201_CREATED)
+def create_user(user:User) -> dict:
     users.append(user)
-    return ['User added']
+    return JSONResponse(status_code=status.HTTP_201_CREATED,content={'message' : 'User added'})
 
-@app.put('/user/{id}', tags=['users'])
-def update_user(id:int, user:User):
+@app.put('/user/{id}', tags=['users'],response_model=dict, status_code=status.HTTP_200_OK)
+def update_user(id:int, user:User) -> dict:
     userFiltered = [user for user in users if user['id'] == id]
     if len(userFiltered) == 1:
         userFiltered[0]['name']=user.name
         userFiltered[0]['mail']=user.mail
         userFiltered[0]['city']=user.city
         userFiltered[0]['initDate']=user.initDate
-        return [{'message':f'User id:{id} updated correctly'}]
+        return JSONResponse(content={'message':f'User id:{id} updated correctly'},status_code=status.HTTP_200_OK)
     else:
-        return [{'message':f'Error id:{id} not Found'}]
+        return JSONResponse(content={'message':f'Error id:{id} not Found'},status_code=status.HTTP_404_NOT_FOUND)
 
-@app.delete('/user/{id}',tags=['users'])
-def delete_user(id:int):
+@app.delete('/user/{id}',tags=['users'],response_model=dict,status_code=status.HTTP_200_OK)
+def delete_user(id:int) -> dict:
     for user in users:
         if user['id']==id:
             users.remove(user)
-            return [{'message':f'User id:{id} deleted'}]
-    return [{'message':f'Error. User id:{id} Not found'}]
+            return JSONResponse(content={'message':f'User id:{id} deleted'},status_code=status.HTTP_200_OK)
+    return JSONResponse(content={'message':f'Error. User id:{id} Not found'},status_code=status.HTTP_404_NOT_FOUND)
     # users = [user for user in users if user['id'] != id]    #Es una manera diferente de Eliminar de una lista el diccionario
