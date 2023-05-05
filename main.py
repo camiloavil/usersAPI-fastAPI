@@ -1,18 +1,32 @@
-from fastapi import FastAPI, Path, Query, status
+from fastapi import FastAPI,Depends, Path, Query, Request, HTTPException, status
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.security import HTTPBearer
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, List
+
+from jwt_manager import create_token, validate_token
 
 app = FastAPI()
 app.title = "Users API"
 app.version = "0.0.1"
 
+class JWTBearer(HTTPBearer):
+    async def __call__(self, request: Request):
+        auth = await super().__call__(request)
+        data = validate_token(auth.credentials)
+        if data['email']!='admin@admin.com':
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Credentials are invalid')
+
+class UserAuth(BaseModel):
+    email    : str = Field(min_length=5, max_length=50)
+    password : str = Field(min_length=5, max_length=50)
+
 class User(BaseModel):
     id: Optional[int] = None 
-    name : str = Field(min_length=5, max_length=50)
-    mail : str = Field(min_length=5, max_length=50)
-    city : str = Field(min_length=5, max_length=50)
+    name  : str = Field(min_length=10, max_length=50)
+    email : str = Field(min_length=10, max_length=50)
+    city  : str = Field(min_length=10, max_length=50)
     initDate : Optional[datetime] = None 
     class Config:
         schema_extra = {
@@ -46,7 +60,15 @@ users = [
 def home():
     return HTMLResponse('<h1>Hello You</h1>')
 
-@app.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK)
+@app.post('/login', tags=['auth'])
+def login(user:UserAuth):
+    if user.email=='admin@admin.com' and user.password=='admin':
+        jToken:str = create_token(user.dict())
+        return JSONResponse(content=jToken,status_code=status.HTTP_200_OK)
+    else:
+        return JSONResponse(content=[],status_code=status.HTTP_400_BAD_REQUEST)
+
+@app.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK, dependencies=[Depends(JWTBearer)])
 def get_users() -> List[User]:
     return JSONResponse(status_code=status.HTTP_200_OK, content=users)
 
