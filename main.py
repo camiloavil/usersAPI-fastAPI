@@ -4,9 +4,15 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, List
 
+from app.routers import users
+from app.routers.users import users_router
+
+
 app = FastAPI()
 app.title = "Users API"
 app.version = "0.0.1"
+
+app.include_router(users_router)
 
 # class JWTBearer(HTTPBearer):
 #     async def __call__(self, request: Request):
@@ -36,23 +42,6 @@ class User(BaseModel):
             }
         }
 
-users = [
-    {
-        'id'   : 1,
-        'name' : 'Camilo Avila',
-        'mail' : 'camilo.avil@gmail.com',
-        'city' : 'Neiva',
-        'initDate' : '2May2023'
-    },
-    { 
-        'id'   : 2,  
-        'name' : 'Martin Castro',
-        'mail' : 'castro.martin@gmail.com',
-        'city' : 'Pasto',
-        'initDate' : '20Ener2023'
-    }
-]
-
 @app.get('/', tags=['home'])
 def home():
     return HTMLResponse('<h1>Hello You</h1>')
@@ -78,7 +67,7 @@ def get_user_by_city(city:str = Query(description='look for City',example='Neiva
         return JSONResponse(status_code=status.HTTP_200_OK,content=data) #Not Found
 
 @app.post('/user', tags=['users'],response_model=dict,status_code=status.HTTP_201_CREATED)
-def create_user(user:User = Body()) -> dict:
+def create_user(user:User = Body(...)) -> dict:
     users.append(user)
     return JSONResponse(status_code=status.HTTP_201_CREATED,content={'message' : 'User added'})
 
@@ -94,11 +83,3 @@ def update_user(id:int = Path(description="User ID to modify",example=1,ge=1), u
     else:
         return JSONResponse(content={'message':f'Error id:{id} not Found'},status_code=status.HTTP_404_NOT_FOUND)
 
-@app.delete('/user/{id}',tags=['users'],response_model=dict,status_code=status.HTTP_200_OK)
-def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1)) -> dict:
-    for user in users:
-        if user['id']==id:
-            users.remove(user)
-            return JSONResponse(content={'message':f'User id:{id} deleted'},status_code=status.HTTP_200_OK)
-    return JSONResponse(content={'message':f'Error. User id:{id} Not found'},status_code=status.HTTP_404_NOT_FOUND)
-    # users = [user for user in users if user['id'] != id]    #Es una manera diferente de Eliminar de una lista el diccionario
