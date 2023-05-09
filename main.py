@@ -1,6 +1,5 @@
-from fastapi import FastAPI,Depends, Path, Query, Request, HTTPException, status
+from fastapi import FastAPI,Depends, Path, Query, status
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.security import HTTPBearer
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, List
