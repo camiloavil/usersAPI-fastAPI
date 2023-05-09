@@ -1,4 +1,4 @@
-from fastapi import FastAPI,Depends, Path, Query, status
+from fastapi import FastAPI, Body, Path, Query, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -24,7 +24,7 @@ class User(BaseModel):
     name  : str = Field(min_length=10, max_length=50)
     email : str = Field(min_length=10, max_length=50)
     city  : str = Field(min_length=10, max_length=50)
-    initDate : Optional[datetime] = None 
+    initDate : Optional[datetime] = None
     class Config:
         schema_extra = {
             'example': {
@@ -62,7 +62,7 @@ def get_users() -> List[User]:
     return JSONResponse(status_code=status.HTTP_200_OK, content=users)
 
 @app.get('/user/{id}', tags=['users'], response_model=User, status_code=status.HTTP_200_OK)
-def get_user(id: int = Path(ge=1)) -> User:
+def get_user(id: int = Path(description='ID of the user to get',example=1,ge=1)) -> User:
     data = [user for user in users if user['id'] == id]
     if len(data)==1:
         return JSONResponse(status_code=status.HTTP_200_OK,content= data)
@@ -70,7 +70,7 @@ def get_user(id: int = Path(ge=1)) -> User:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= data)
 
 @app.get('/users/', tags=['users'],response_model=List[User],status_code=status.HTTP_200_OK)
-def get_user_by_city(city:str = Query(min_length=2,max_length=20)) -> List[User]:
+def get_user_by_city(city:str = Query(description='look for City',example='Neiva', min_length=2,max_length=20)) -> List[User]:
     data = [user for user in users if user['city'] == city]
     if len(data)==0:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content=data) #Not Found
@@ -78,12 +78,12 @@ def get_user_by_city(city:str = Query(min_length=2,max_length=20)) -> List[User]
         return JSONResponse(status_code=status.HTTP_200_OK,content=data) #Not Found
 
 @app.post('/user', tags=['users'],response_model=dict,status_code=status.HTTP_201_CREATED)
-def create_user(user:User) -> dict:
+def create_user(user:User = Body()) -> dict:
     users.append(user)
     return JSONResponse(status_code=status.HTTP_201_CREATED,content={'message' : 'User added'})
 
 @app.put('/user/{id}', tags=['users'],response_model=dict, status_code=status.HTTP_200_OK)
-def update_user(id:int, user:User) -> dict:
+def update_user(id:int = Path(description="User ID to modify",example=1,ge=1), user:User = Body()) -> dict:
     userFiltered = [user for user in users if user['id'] == id]
     if len(userFiltered) == 1:
         userFiltered[0]['name']=user.name
@@ -95,7 +95,7 @@ def update_user(id:int, user:User) -> dict:
         return JSONResponse(content={'message':f'Error id:{id} not Found'},status_code=status.HTTP_404_NOT_FOUND)
 
 @app.delete('/user/{id}',tags=['users'],response_model=dict,status_code=status.HTTP_200_OK)
-def delete_user(id:int) -> dict:
+def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1)) -> dict:
     for user in users:
         if user['id']==id:
             users.remove(user)
