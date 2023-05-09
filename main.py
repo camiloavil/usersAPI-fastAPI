@@ -5,18 +5,9 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, List
 
-from jwt_manager import create_token, validate_token
-
 app = FastAPI()
 app.title = "Users API"
 app.version = "0.0.1"
-
-class JWTBearer(HTTPBearer):
-    async def __call__(self, request: Request):
-        auth = await super().__call__(request)
-        data = validate_token(auth.credentials)
-        if data['email']!='admin@admin.com':
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Credentials are invalid')
 
 class UserAuth(BaseModel):
     email    : str = Field(min_length=5, max_length=50)
@@ -60,15 +51,7 @@ users = [
 def home():
     return HTMLResponse('<h1>Hello You</h1>')
 
-@app.post('/login', tags=['auth'])
-def login(user:UserAuth):
-    if user.email=='admin@admin.com' and user.password=='admin':
-        jToken:str = create_token(user.dict())
-        return JSONResponse(content=jToken,status_code=status.HTTP_200_OK)
-    else:
-        return JSONResponse(content=[],status_code=status.HTTP_400_BAD_REQUEST)
-
-@app.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK, dependencies=[Depends(JWTBearer)])
+@app.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK)
 def get_users() -> List[User]:
     return JSONResponse(status_code=status.HTTP_200_OK, content=users)
 
