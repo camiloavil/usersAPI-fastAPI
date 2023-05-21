@@ -9,23 +9,22 @@ users_router = APIRouter()
 
 class User(BaseModel):
     id: Optional[int] = None 
-    name  : str = Field(min_length=10, max_length=50)
+    name  : str = Field(min_length=3, max_length=50)
     email : str = Field(min_length=10, max_length=50)
-    city  : str = Field(min_length=10, max_length=50)
+    city  : str = Field(min_length=3, max_length=50)
     initDate : Optional[datetime] = None
     class Config:
         schema_extra = {
             'example': {
-                'id' : 'Identifier',
                 'name' : 'Nombre',
-                'mail' : 'Correo Electronico, sera el validador de usuario',
-                'city' : 'Ciudad',
-                'initDate' : 'Fecha de inscripccion'
+                'email' : 'Correo Electronico, sera el validador de usuario',
+                'city' : 'Ciudad'
             }
         }
 
 @users_router.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK)
 def get_users() -> List[User]:
+    print(users)
     return JSONResponse(status_code=status.HTTP_200_OK, content=users)
 
 @users_router.get('/user/{id}', tags=['users'], response_model=User, status_code=status.HTTP_200_OK)
@@ -56,6 +55,9 @@ def get_user_by_city(city:str = Query(description='look for City',example='Neiva
 
 @users_router.post('/user', tags=['users'],response_model=dict,status_code=status.HTTP_201_CREATED)
 def create_user(user:User = Body(...)) -> dict:
+    user = dict(user)
+    user['id']=max(users, key=lambda x: x['id'])['id'] + 1
+    user['initDate'] = datetime.now().strftime("%d/%m/%Y")
     users.append(user)
     return JSONResponse(status_code=status.HTTP_201_CREATED,content={'message' : 'User added'})
 
@@ -64,7 +66,7 @@ def update_user(id:int = Path(description="User ID to modify",example=1,ge=1), u
     userFiltered = [user for user in users if user['id'] == id]
     if len(userFiltered) == 1:
         userFiltered[0]['name']=user.name
-        userFiltered[0]['mail']=user.mail
+        userFiltered[0]['email']=user.email
         userFiltered[0]['city']=user.city
         userFiltered[0]['initDate']=user.initDate
         return JSONResponse(content={'message':f'User id:{id} updated correctly'},status_code=status.HTTP_200_OK)
