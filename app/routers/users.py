@@ -55,7 +55,7 @@ def get_user_by_city(city:str = Query(description='look for City',example='Neiva
 
 @users_router.post('/user', tags=['users'],response_model=dict,status_code=status.HTTP_201_CREATED)
 def create_user(user:User = Body(...)) -> dict:
-    user = dict(user)
+    user = dict(user)                                           #make it a dict to add 'id' and 'initDate'
     user['id']=max(users, key=lambda x: x['id'])['id'] + 1
     user['initDate'] = datetime.now().strftime("%d/%m/%Y")
     users.append(user)
