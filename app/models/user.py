@@ -1,4 +1,4 @@
-from config.database import engine
+from app.config.database import engine
 from sqlmodel import SQLModel, Field
 from typing import Optional
 
