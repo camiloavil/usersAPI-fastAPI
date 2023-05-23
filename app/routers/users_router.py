@@ -1,35 +1,36 @@
-from fastapi import APIRouter, Path, status, Body, Query
+from fastapi import APIRouter, Depends, Path, status, Body, Query
 from fastapi.responses import JSONResponse
-from typing import Optional ,List
+from typing import List
 from datetime import datetime
 
-# from app.models.user import User
-from app.config.db import engine
+from app.models.user import User, UserCreate
+from app.config.db import get_session, engine
+from sqlmodel import Session, select
 
-from . import users
-from pydantic import BaseModel, Field
+# from . import users
+# from pydantic import BaseModel, Field
 
-class User(BaseModel):
-    id: Optional[int] = None 
-    name  : str = Field(min_length=3, max_length=50)
-    email : str = Field(min_length=10, max_length=50)
-    city  : str = Field(min_length=3, max_length=50)
-    initDate : Optional[datetime] = None
-    class Config:
-        schema_extra = {
-            'example': {
-                'name' : 'Nombre',
-                'email' : 'Correo Electronico, sera el validador de usuario',
-                'city' : 'Ciudad'
-            }
-        }
+# class User(BaseModel):
+#     id: Optional[int] = None 
+#     name  : str = Field(min_length=3, max_length=50)
+#     email : str = Field(min_length=10, max_length=50)
+#     city  : str = Field(min_length=3, max_length=50)
+#     initDate : Optional[datetime] = None
+#     class Config:
+#         schema_extra = {
+#             'example': {
+#                 'name' : 'Nombre',
+#                 'email' : 'Correo Electronico, sera el validador de usuario',
+#                 'city' : 'Ciudad'
+#             }
+#         }
 
 users_router = APIRouter()
 
 @users_router.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK)
-def get_users() -> List[User]:
-    print(users)
-    return JSONResponse(status_code=status.HTTP_200_OK, content=users)
+def get_users(session: Session = Depends(get_session)) -> List[User]:
+    users = session.exec(select(User)).all()
+    return users
 
 @users_router.get('/user/{id}', tags=['users'], response_model=User, status_code=status.HTTP_200_OK)
 def get_user(id: int = Path(description='ID of the user to get',example=1,ge=1)) -> User:
@@ -39,7 +40,7 @@ def get_user(id: int = Path(description='ID of the user to get',example=1,ge=1))
     else:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= data)
 
-@users_router.delete('/user/{id}',tags=['users'],response_model=dict,status_code=status.HTTP_200_OK)
+@users_router.delete('/user/{id}', tags=['users'], response_model=dict, status_code=status.HTTP_200_OK)
 def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1)) -> dict:
     for user in users:
         if user['id']==id:
@@ -57,12 +58,13 @@ def get_user_by_city(city:str = Query(description='look for City',example='Neiva
         return JSONResponse(status_code=status.HTTP_200_OK,content=data) #Not Found
 
 @users_router.post('/user', tags=['users'],response_model=dict,status_code=status.HTTP_201_CREATED)
-def create_user(user:User = Body(...)) -> dict:
-    user = dict(user)                                           #make it a dict to add 'id' and 'initDate'
-    user['id']=max(users, key=lambda x: x['id'])['id'] + 1
-    user['initDate'] = datetime.now().strftime("%d/%m/%Y")
-    users.append(user)
-    return JSONResponse(status_code=status.HTTP_201_CREATED,content={'message' : 'User added'})
+def create_user(user:UserCreate = Body(...), session: Session = Depends(get_session)) -> dict:
+    user_db = User.from_orm(user)
+    user_db.initDate = datetime.now()
+    session.add(user_db)
+    session.commit()
+    session.refresh(user_db)
+    return JSONResponse(status_code=status.HTTP_201_CREATED,content={'message' : 'User added', 'id' : user_db.id, 'username' : user_db.name })
 
 @users_router.put('/user/{id}', tags=['users'],response_model=dict, status_code=status.HTTP_200_OK)
 def update_user(id:int = Path(description="User ID to modify",example=1,ge=1), user:User = Body()) -> dict:
