@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Path, status, Body, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
 from typing import Optional ,List
 from datetime import datetime
-from . import users
 
-users_router = APIRouter()
+# from app.models.user import User
+from app.config.db import engine
+
+from . import users
+from pydantic import BaseModel, Field
 
 class User(BaseModel):
     id: Optional[int] = None 
@@ -21,6 +23,8 @@ class User(BaseModel):
                 'city' : 'Ciudad'
             }
         }
+
+users_router = APIRouter()
 
 @users_router.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK)
 def get_users() -> List[User]:
