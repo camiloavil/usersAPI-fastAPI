@@ -48,7 +48,6 @@ def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1)) -
     return JSONResponse(content={'message':f'Error. User id:{id} Not found'},status_code=status.HTTP_404_NOT_FOUND)
     # users = [user for user in users if user['id'] != id]    #Es una manera diferente de Eliminar de una lista el diccionario
 
-
 @users_router.get('/users/', tags=['users'],response_model=List[User],status_code=status.HTTP_200_OK)
 def get_user_by_city(city:str = Query(description='look for City',example='Neiva', min_length=2,max_length=20)) -> List[User]:
     data = [user for user in users if user['city'] == city]
