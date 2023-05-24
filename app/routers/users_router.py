@@ -11,8 +11,10 @@ from sqlmodel import Session, select
 users_router = APIRouter()
 
 @users_router.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK)
-def get_users(session: Session = Depends(get_session)) -> List[User]:
-    users = session.exec(select(User)).all()
+def get_users(offset: int = Query(description='Offset of the query',default=1,ge=1),
+              limit: int = Query(description='Limit of data per request',default=100, lte=100), 
+              session: Session = Depends(get_session)) -> List[User]:
+    users = session.exec(select(User).offset(offset).limit(limit)).all()
     return users
 
 @users_router.get('/user/{id}', tags=['users'], response_model=User, status_code=status.HTTP_200_OK)
@@ -33,13 +35,13 @@ def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), s
     else:
         return JSONResponse(content={'message':f'Error. User id:{id} Not found'}, status_code=status.HTTP_404_NOT_FOUND)
 
-@users_router.get('/users/', tags=['users'],response_model=List[User],status_code=status.HTTP_200_OK)
-def get_user_by_city(city:str = Query(description='look for City',example='Neiva', min_length=2,max_length=20)) -> List[User]:
-    data = [user for user in users if user['city'] == city]
-    if len(data)==0:
-        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content=data) #Not Found
-    else:
-        return JSONResponse(status_code=status.HTTP_200_OK,content=data) #Not Found
+# @users_router.get('/users/', tags=['users'],response_model=List[User],status_code=status.HTTP_200_OK)
+# def get_user_by_city(city:str = Query(description='look for City',example='Neiva', min_length=2,max_length=20)) -> List[User]:
+#     data = [user for user in users if user['city'] == city]
+#     if len(data)==0:
+#         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content=data) #Not Found
+#     else:
+#         return JSONResponse(status_code=status.HTTP_200_OK,content=data) #Not Found
 
 @users_router.post('/user', tags=['users'],response_model=User, status_code=status.HTTP_201_CREATED)
 def create_user(user:UserCreate = Body(...), session: Session = Depends(get_session)) -> dict:
