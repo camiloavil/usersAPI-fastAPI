@@ -25,5 +25,15 @@ class UserCreate(UserBase):
             }
         }
 
-class UserUpdate(UserBase):
-    pass
+class UserUpdate(SQLModel):
+    name  : Optional[str] = None 
+    email : Optional[str] = None 
+    city  : Optional[str] = None
+    class Config:
+        schema_extra = {
+            'example': {
+                'name' : 'Nombre',
+                'email' : 'user@example.com',
+                'city' : 'Ciudad'
+            }
+        }
