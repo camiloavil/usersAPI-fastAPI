@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path, status, Body, Query
+from fastapi import APIRouter, Depends, Path, status, Body, Query, Request
 from fastapi.responses import JSONResponse
 from typing import List
 from datetime import datetime
@@ -9,6 +9,7 @@ from app.config.db import get_session
 from sqlmodel import Session, select
 
 users_router = APIRouter()
+
 
 @users_router.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK)
 def get_users(offset: int = Query(description='Offset of the query',default=1,ge=1),
