@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.routers.users_router import users_router
+from app.routers.files_router import files_router
 from app.config.db import create_db_table
 
 import time
@@ -10,7 +11,8 @@ app = FastAPI()
 app.title = "Users API"
 app.version = "0.0.1"
 
-app.include_router(users_router)
+app.include_router(users_router)    #import all paths of Users
+app.include_router(files_router)    #import all paths of Files
 
 @app.middleware("http")
 async def error_handler(request: Request, call_next):
