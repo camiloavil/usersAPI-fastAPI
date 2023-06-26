@@ -6,12 +6,12 @@ from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 #Python
-from typing import List
+from typing import Annotated, List
 # APP
 from app.models.user import User, UserCreate, UserUpdate, UserFB
 from app.models.response import ResponseModel
 from app.DB.db import get_session
-from app.security.secureuser import verify_password, get_password_hash
+from app.security.secureuser import verify_password, get_password_hash, get_current_user
 
 users_router = APIRouter()
 
@@ -69,12 +69,49 @@ def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), s
 #     else:
 #         return JSONResponse(status_code=status.HTTP_200_OK,content=data) #Not Found
 
+@users_router.put('/user/{id}', tags=['users'],response_model=ResponseModel, status_code=status.HTTP_200_OK)
+def update_user(id:int = Path(description="User ID to modify",example=1,ge=1), user:UserUpdate = Body(), session: Session = Depends(get_session)) -> dict:
+    """
+    Updates a user in the database.
+
+    Args:
+        id (int): User ID to modify.
+        user (UserUpdate): The updated user data.
+        session (Session): SQLAlchemy session dependency.
+
+    Returns:
+        dict: A JSON response indicating if the user was updated correctly or not.
+    """
+    user_db = session.get(User,id)
+    if user_db is None:
+        return JSONResponse(content={'message':f'Error id:{id} not Found'},status_code=status.HTTP_404_NOT_FOUND)
+    user_data = user.dict(exclude_unset=True)
+    for key, value in user_data.items():
+        setattr(user_db,key,value)
+    session.add(user_db)
+    session.commit()
+    session.refresh(user_db)
+    return JSONResponse(content={'message':f'User id:{id} updated correctly'},status_code=status.HTTP_200_OK)
+
+
 @users_router.post(path='/user', 
-                   tags=['users'],
+                   tags=['Users'],
                    response_model=UserFB, 
                    status_code=status.HTTP_201_CREATED)
-def create_user(user: UserCreate = Body(...), 
+def create_user(user: UserCreate = Body(), 
                 session: Session = Depends(get_session)) -> dict:
+    """
+    Creates a new user and adds it to the database. Accepts a user object as a Body parameter in the request. 
+    The function returns a dictionary representation of the newly created user
+    If the user already exists, it raises an HTTPException with a status code of 409. 
+    If there is an internal error while creating the user, it raises an HTTPException with a status code of 400. 
+
+    :param user: UserCreate object. Required. 
+    :param session: Session object. Required.
+    :return: A dictionary representation of the newly created user
+    :raises HTTPException 409: If the user already exists.
+    :raises HTTPException 400: If there is an internal error while creating the user.
+    """
     userDict = user.dict()
     userDict.update({'pass_hash' : get_password_hash(user.password.get_secret_value())})
 
@@ -90,24 +127,14 @@ def create_user(user: UserCreate = Body(...),
         print("Error Creating User:"+str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Internal Error")
     return UserFB(**user_db.dict())
-    
 
-    print(f'user : {user}')
-    user_db = User.from_orm(user)
-    session.add(user_db)
-    session.commit()
-    session.refresh(user_db)
-    return JSONResponse(status_code=status.HTTP_201_CREATED,content={'message' : 'User added', 'id' : user_db.id, 'username' : user_db.name })
+@users_router.get(path="/myuser",
+                  response_model=UserFB,
+                  tags=["Users"])
+async def info_User(current_user: Annotated[User, Depends(get_current_user)]):
+    """
+    Get information about the current user.
 
-@users_router.put('/user/{id}', tags=['users'],response_model=ResponseModel, status_code=status.HTTP_200_OK)
-def update_user(id:int = Path(description="User ID to modify",example=1,ge=1), user:UserUpdate = Body(), session: Session = Depends(get_session)) -> dict:
-    user_db = session.get(User,id)
-    if user_db is None:
-        return JSONResponse(content={'message':f'Error id:{id} not Found'},status_code=status.HTTP_404_NOT_FOUND)
-    user_data = user.dict(exclude_unset=True)
-    for key, value in user_data.items():
-        setattr(user_db,key,value)
-    session.add(user_db)
-    session.commit()
-    session.refresh(user_db)
-    return JSONResponse(content={'message':f'User id:{id} updated correctly'},status_code=status.HTTP_200_OK)
+    :return: UserFB - Information about the current user
+    """
+    return UserFB(**current_user.dict())

@@ -1,5 +1,7 @@
-from app.models.user import SQLModel        #loading model user
-from sqlmodel import Session, create_engine
+# APP
+from app.models.user import SQLModel, User
+from sqlmodel import Session, create_engine, select
+# Python
 import os
 
 sqlite_filename = 'DB.sqlite'                       #Filename of sqlite DB
@@ -13,3 +15,18 @@ def create_db_table():
 def get_session():
     with Session(engine) as session:
         yield session
+
+def get_userDB_by_email(username: str):
+    """
+    Retrieves a user's database object by their email address.
+
+    :param username: A string representing the email address of the user.
+    :type username: str
+
+    :return: The database object representing the user.
+    :rtype: User
+    """
+    with Session(engine) as session:
+        statement = select(User).where(User.email == username)
+        user_db = session.exec(statement).first()
+    return user_db
