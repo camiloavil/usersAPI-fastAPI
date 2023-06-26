@@ -2,6 +2,8 @@
 from fastapi import APIRouter, Depends, status
 from fastapi import Body, Query, Form, Path
 from fastapi.responses import JSONResponse
+# SQLModel
+from sqlmodel import Session, select
 #Python
 from typing import List
 from datetime import datetime
@@ -9,7 +11,7 @@ from datetime import datetime
 from app.models.user import User, UserCreate, UserUpdate, UserFB
 from app.models.response import ResponseModel
 from app.DB.db import get_session
-from sqlmodel import Session, select
+from app.security.secureuser import verify_password, get_password_hash
 
 users_router = APIRouter()
 
@@ -74,8 +76,8 @@ def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), s
 def create_user(user: UserCreate = Body(...), 
                 session: Session = Depends(get_session)) -> dict:
     userDict = user.dict()
-
-    print(user)
+    userDict.update({'pass_hash' : get_password_hash(user.password)})
+    print(userDict)
 
     user_db = User.from_orm(user)
     user_db.initDate = datetime.now()
