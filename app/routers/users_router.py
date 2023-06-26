@@ -1,12 +1,12 @@
 #FastAPI
-from fastapi import APIRouter, Depends, status
-from fastapi import Body, Query, Form, Path
+from fastapi import APIRouter, status, HTTPException
+from fastapi import Depends, Body, Query, Form, Path
 from fastapi.responses import JSONResponse
 # SQLModel
 from sqlmodel import Session, select
+from sqlalchemy.exc import IntegrityError
 #Python
 from typing import List
-from datetime import datetime
 # APP
 from app.models.user import User, UserCreate, UserUpdate, UserFB
 from app.models.response import ResponseModel
@@ -76,11 +76,24 @@ def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), s
 def create_user(user: UserCreate = Body(...), 
                 session: Session = Depends(get_session)) -> dict:
     userDict = user.dict()
-    userDict.update({'pass_hash' : get_password_hash(user.password)})
-    print(userDict)
+    userDict.update({'pass_hash' : get_password_hash(user.password.get_secret_value())})
 
+    try:
+        user_db = User.from_orm(User(**userDict))
+        session.add(user_db)
+        session.commit()
+        session.refresh(user_db)
+        print(str(user_db))
+    except IntegrityError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User already exists")
+    except Exception as e:
+        print("Error Creating User:"+str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Internal Error")
+    return UserFB(**user_db.dict())
+    
+
+    print(f'user : {user}')
     user_db = User.from_orm(user)
-    user_db.initDate = datetime.now()
     session.add(user_db)
     session.commit()
     session.refresh(user_db)

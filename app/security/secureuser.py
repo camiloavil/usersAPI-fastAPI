@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 from fastapi.security import OAuth2PasswordBearer
 # PassLib
-from passlib import CryptContext
+from passlib.context import CryptContext
 # Jose
 from jose import jwt, JWTError
 # APP
