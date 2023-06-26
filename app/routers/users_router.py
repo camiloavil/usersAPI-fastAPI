@@ -1,23 +1,32 @@
-from fastapi import APIRouter, Depends, Path, status, Body, Query
+#FastAPI
+from fastapi import APIRouter, Depends, status
+from fastapi import Body, Query, Form, Path
 from fastapi.responses import JSONResponse
+#Python
 from typing import List
 from datetime import datetime
-
-from app.models.user import User, UserCreate, UserUpdate
+# APP
+from app.models.user import User, UserCreate, UserUpdate, UserFB
 from app.models.response import ResponseModel
-from app.config.db import get_session
+from app.DB.db import get_session
 from sqlmodel import Session, select
 
 users_router = APIRouter()
 
-@users_router.get('/users', tags=['users'], response_model=List[User], status_code=status.HTTP_200_OK)
+@users_router.get('/users', tags=['users'], 
+                  response_model=List[User], 
+                  status_code=status.HTTP_200_OK
+                )
 def get_users(offset: int = Query(description='Offset of the query',default=1,ge=1),
               limit: int = Query(description='Limit of data per request',default=100, lte=100), 
               session: Session = Depends(get_session)) -> List[User]:
     users = session.exec(select(User).offset(offset).limit(limit)).all()
     return users
 
-@users_router.get('/user/{id}', tags=['users'], response_model=User, status_code=status.HTTP_200_OK)
+@users_router.get(path='/user/{id}', 
+                  tags=['users'], 
+                  response_model=User, 
+                  status_code=status.HTTP_200_OK)
 def get_user(id: int = Path(description='ID of the user to get',example=1,ge=1), 
              session: Session = Depends(get_session)) -> User:
     """
@@ -37,7 +46,10 @@ def get_user(id: int = Path(description='ID of the user to get',example=1,ge=1),
     else:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= {'message' : f'Error. User id:{id} Not found'})
 
-@users_router.delete('/user/{id}', tags=['users'], response_model=ResponseModel, status_code=status.HTTP_200_OK)
+@users_router.delete(path='/user/{id}', 
+                     tags=['users'], 
+                     response_model=ResponseModel, 
+                     status_code=status.HTTP_200_OK)
 def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), session: Session = Depends(get_session)) -> dict:
     user = session.get(User, id)
     if user is not None:
@@ -55,8 +67,16 @@ def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), s
 #     else:
 #         return JSONResponse(status_code=status.HTTP_200_OK,content=data) #Not Found
 
-@users_router.post('/user', tags=['users'],response_model=User, status_code=status.HTTP_201_CREATED)
-def create_user(user:UserCreate = Body(...), session: Session = Depends(get_session)) -> dict:
+@users_router.post(path='/user', 
+                   tags=['users'],
+                   response_model=UserFB, 
+                   status_code=status.HTTP_201_CREATED)
+def create_user(user: UserCreate = Body(...), 
+                session: Session = Depends(get_session)) -> dict:
+    userDict = user.dict()
+
+    print(user)
+
     user_db = User.from_orm(user)
     user_db.initDate = datetime.now()
     session.add(user_db)
