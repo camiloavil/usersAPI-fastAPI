@@ -3,7 +3,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.routers.users_router import users_router
 from app.routers.files_router import files_router
-from app.config.db import create_db_table
+from app.DB.db import create_db_table
+from app.security.secureuser import secure_user
 
 import time
 
@@ -11,6 +12,7 @@ app = FastAPI()
 app.title = "Users API"
 app.version = "0.0.1"
 
+app.include_router(secure_user)
 app.include_router(users_router)    #import all paths of Users
 app.include_router(files_router)    #import all paths of Files
 

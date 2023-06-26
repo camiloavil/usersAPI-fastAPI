@@ -1,22 +1,25 @@
-from fastapi import APIRouter, Depends, Path, status, Body, Query, HTTPException
+#FastAPI
+from fastapi import APIRouter, status, HTTPException
+from fastapi import Depends, Body, Query, Form, Path
 from fastapi.responses import JSONResponse
-
-from typing import List
-from datetime import datetime
-
-from app.models.user import User, UserCreate, UserUpdate
-from app.models.response import ResponseModel
-from app.config.db import get_session
+# SQLModel
 from sqlmodel import Session, select
+from sqlalchemy.exc import IntegrityError
+#Python
+from typing import Annotated, List
+# APP
+from app.models.user import User, UserCreate, UserUpdate, UserFB
+from app.models.response import ResponseModel
+from app.DB.db import get_session
+from app.security.secureuser import verify_password, get_password_hash, get_current_user
 
 users_router = APIRouter()
 
 
-@users_router.get(
-        path='/users', 
-        tags=['users'], 
-        response_model=List[User], 
-        status_code=status.HTTP_200_OK)
+@users_router.get(path='/users',
+                  tags=['users'], 
+                  response_model=List[User], 
+                  status_code=status.HTTP_200_OK)
 def get_users(offset: int = Query(description='Offset of the query',default=1,ge=1),
               limit: int = Query(description='Limit of data per request',default=100, lte=100), 
               session: Session = Depends(get_session)) -> List[User]:
@@ -34,11 +37,10 @@ def get_users(offset: int = Query(description='Offset of the query',default=1,ge
     users = session.exec(select(User).offset(offset).limit(limit)).all()
     return users
 
-@users_router.get(
-        path='/user/{id}', 
-        tags=['users'], 
-        response_model=User, 
-        status_code=status.HTTP_200_OK)
+@users_router.get(path='/user/{id}', 
+                  tags=['users'], 
+                  response_model=User, 
+                  status_code=status.HTTP_200_OK)
 def get_user(id: int = Path(description='ID of the user to get',example=1,ge=1), 
              session: Session = Depends(get_session)) -> User:
     """
@@ -63,24 +65,12 @@ def get_user(id: int = Path(description='ID of the user to get',example=1,ge=1),
             detail= f'Error. User id:{id} Not found')
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= {'message' : f'Error. User id:{id} Not found'})
 
-@users_router.delete(
-        path='/user/{id}', 
-        tags=['users'], 
-        response_model=ResponseModel, 
-        status_code=status.HTTP_200_OK)
-def delete_user(
-    id:int = Path(description="User ID to delete",example=1,ge=1), 
-    session: Session = Depends(get_session)) -> dict:
-    """
-    Deletes a user with the given id from the database if it exists.
-
-    Args:
-        id (int): User ID to delete, must be greater than or equal to 1.
-        session (Session): A SQLAlchemy database session.
-
-    Returns:
-        dict: A JSON response containing a message indicating whether the user was deleted or not.
-    """
+@users_router.delete(path='/user/{id}', 
+                     tags=['users'], 
+                     response_model=ResponseModel, 
+                     status_code=status.HTTP_200_OK)
+def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), 
+                session: Session = Depends(get_session)) -> dict:
     user = session.get(User, id)
     if user is not None:
         session.delete(user)
@@ -99,52 +89,22 @@ def delete_user(
 #     else:
 #         return JSONResponse(status_code=status.HTTP_200_OK,content=data) #Not Found
 
-@users_router.post(
-        path='/user', 
-        tags=['users'],
-        response_model=User, 
-        status_code=status.HTTP_201_CREATED)
-def create_user(
-    user:UserCreate = Body(...), 
-    session: Session = Depends(get_session)) -> dict:
+@users_router.put(path='/user/{id}', 
+                  tags=['users'],
+                  response_model=ResponseModel, 
+                  status_code=status.HTTP_200_OK)
+def update_user(id:int = Path(description="User ID to modify",example=1,ge=1), 
+                user:UserUpdate = Body(), session: Session = Depends(get_session)) -> dict:
     """
-    Creates a new user in the database with the given user data.
-    
-    Args:
-        user: A UserCreate instance containing the data for the new user.
-        session: A SQLAlchemy Session instance to use for the database transaction.
-        
-    Returns:
-        A JSONResponse instance containing a success message, the ID of the created user, and the username of the created user.
-    """
-    user_db = User.from_orm(user)
-    user_db.initDate = datetime.now()
-    session.add(user_db)
-    session.commit()
-    session.refresh(user_db)
-    return JSONResponse(status_code=status.HTTP_201_CREATED,content={'message' : 'User added', 'id' : user_db.id, 'username' : user_db.name })
+    Updates a user in the database.
 
-@users_router.put(
-        path='/user/{id}', 
-        tags=['users'],
-        response_model=ResponseModel, 
-        status_code=status.HTTP_200_OK)
-def update_user(
-    id:int = Path(description="User ID to modify",example=1,ge=1), 
-    user:UserUpdate = Body(), 
-    session: Session = Depends(get_session)) -> dict:
-    """
-    Updates a user with the given ID in the database with the provided new data. 
-    
     Args:
-        id (int): User ID to modify. Must be greater than or equal to 1.
-        user (UserUpdate): The updated user data to replace the existing data.
-        session (Session): A SQLAlchemy session dependency.
-        
+        id (int): User ID to modify.
+        user (UserUpdate): The updated user data.
+        session (Session): SQLAlchemy session dependency.
+
     Returns:
-        dict: A JSON response containing a message indicating whether the update was successful or not.
-    Raises:
-        HTTPException: If the user with the given ID is not found in the database.
+        dict: A JSON response indicating if the user was updated correctly or not.
     """
     user_db = session.get(User,id)
     if user_db is None:
@@ -158,3 +118,49 @@ def update_user(
     session.commit()
     session.refresh(user_db)
     return JSONResponse(content={'message':f'User id:{id} updated correctly'},status_code=status.HTTP_200_OK)
+
+
+@users_router.post(path='/user', 
+                   tags=['Users'],
+                   response_model=UserFB, 
+                   status_code=status.HTTP_201_CREATED)
+def create_user(user: UserCreate = Body(), 
+                session: Session = Depends(get_session)) -> dict:
+    """
+    Creates a new user and adds it to the database. Accepts a user object as a Body parameter in the request. 
+    The function returns a dictionary representation of the newly created user
+    If the user already exists, it raises an HTTPException with a status code of 409. 
+    If there is an internal error while creating the user, it raises an HTTPException with a status code of 400. 
+
+    :param user: UserCreate object. Required. 
+    :param session: Session object. Required.
+    :return: A dictionary representation of the newly created user
+    :raises HTTPException 409: If the user already exists.
+    :raises HTTPException 400: If there is an internal error while creating the user.
+    """
+    userDict = user.dict()
+    userDict.update({'pass_hash' : get_password_hash(user.password.get_secret_value())})
+
+    try:
+        user_db = User.from_orm(User(**userDict))
+        session.add(user_db)
+        session.commit()
+        session.refresh(user_db)
+        print(str(user_db))
+    except IntegrityError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User already exists")
+    except Exception as e:
+        print("Error Creating User:"+str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Internal Error")
+    return UserFB(**user_db.dict())
+
+@users_router.get(path="/myuser",
+                  response_model=UserFB,
+                  tags=["Users"])
+async def info_User(current_user: Annotated[User, Depends(get_current_user)]):
+    """
+    Get information about the current user.
+
+    :return: UserFB - Information about the current user
+    """
+    return UserFB(**current_user.dict())
