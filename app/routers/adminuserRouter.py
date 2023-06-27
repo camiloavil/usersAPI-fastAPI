@@ -1,48 +1,105 @@
+#FastAPI
+from fastapi import APIRouter, status, HTTPException
+from fastapi import Depends, Query, Path
+from fastapi.responses import JSONResponse
+# SQLModel
+from sqlmodel import Session, select
+# Python
+from pydantic import EmailStr
+from typing import Annotated
+from typing import List
+from uuid import UUID
+# APP
+from app.models.user import User, UserFB
+from app.DB.db import get_session, get_userDB_by_email
+from app.security.secureuser import get_current_user
 
-# @users_router.get('/users', tags=['users'], 
-#                   response_model=List[User], 
-#                   status_code=status.HTTP_200_OK
-#                 )
-# def get_users(offset: int = Query(description='Offset of the query',default=1,ge=1),
-#               limit: int = Query(description='Limit of data per request',default=100, lte=100), 
-#               session: Session = Depends(get_session)) -> List[User]:
-#     users = session.exec(select(User).offset(offset).limit(limit)).all()
-#     return users
+adminuser_router = APIRouter()
 
-# @users_router.get(path='/user/{id}', 
-#                   tags=['users'], 
-#                   response_model=User, 
-#                   status_code=status.HTTP_200_OK)
-# def get_user(id: int = Path(description='ID of the user to get',example=1,ge=1), 
-#              session: Session = Depends(get_session)) -> User:
-#     """
-#     Retrieves a user by their ID. 
+@adminuser_router.get('/allusers', 
+                      tags=['Admin'], 
+                      response_model= List[UserFB], 
+                      status_code=status.HTTP_200_OK
+                )
+def get_users(current_user: Annotated[User, Depends(get_current_user)],
+            #   offset: int = Query(description='Offset of the query',default=1,ge=1),
+              limit: int = Query(description='Limit of data per request',default=100, lte=100), 
+              session: Session = Depends(get_session)) -> dict:
+    """
+    Retrieve all users if the current user is an admin. Returns a list of UserFB objects.
     
-#     Args:
-#         id (int): ID of the user to retrieve. Must be greater than or equal to 1.
-#         session (Session): A SQLAlchemy Database Session dependency.
+    Args:
+        current_user (Annotated[User, Depends(get_current_user)]): The current user requesting data.
+        limit (int): Limit of data per request. Defaults to 100.
+        session (Session): A SQLAlchemy session object.
+        
+    Returns:
+        A list of UserFB objects.
+    
+    Raises:
+        HTTPException: If the current user is not an admin.
+    """
+    if(current_user.userType != 'admin'):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Unauthorized")
+    users = session.exec(select(User).limit(limit)).all()
+    # users = session.exec(select(User).offset(offset).limit(limit)).all() #Doesn't Work check it
+    return [UserFB(**user.dict()) for user in users]
 
-#     Returns:
-#         User: A Pydantic User model representing the retrieved user.
-#         JSONResponse (status_code=404): A JSON response containing an error message if the user is not found.
-#     """
-#     user = session.get(User, id)
-#     if user is not None:
-#         return user
-#     else:
-#         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= {'message' : f'Error. User id:{id} Not found'})
+
+@adminuser_router.get(path='/getuser/email/{email}', 
+                      tags=['Admin'], 
+                      response_model=UserFB, 
+                      status_code=status.HTTP_200_OK)
+def getUserbyEmail(current_user: Annotated[User, Depends(get_current_user)],
+             email: EmailStr = Path(description='e-mail of the user to get', example='user@example.com'), 
+             session: Session = Depends(get_session)) -> User:
+
+    if(current_user.userType != 'admin'):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Unauthorized")
+
+    print(f'User id:{email}')
+    user = get_userDB_by_email(email)
+    if user is not None:
+        return UserFB(**user.dict())
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                            detail= f'Error. User e-mail: {email} Not found')
+        # return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= {'message' : f'Error. User id:{id} Not found'})
 
 
+@adminuser_router.get(path='/getuser/{uuid}', 
+                      tags=['Admin'], 
+                      response_model=UserFB, 
+                      status_code=status.HTTP_200_OK)
+def getUserbyUUID(current_user: Annotated[User, Depends(get_current_user)],
+             uuid: UUID = Path(description='UUID of the user to get'), 
+             session: Session = Depends(get_session)) -> User:
 
-# # @users_router.delete(path='/user/{id}', 
-# #                      tags=['AdminUsers'], 
-# #                      response_model=ResponseModel, 
-# #                      status_code=status.HTTP_200_OK)
-# # def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), session: Session = Depends(get_session)) -> dict:
-# #     user = session.get(User, id)
-# #     if user is not None:
-# #         session.delete(user)
-# #         session.commit()
-# #         return JSONResponse(content={'message':f'User id:{id} deleted'},status_code=status.HTTP_200_OK)
-# #     else:
-# #         return JSONResponse(content={'message':f'Error. User id:{id} Not found'}, status_code=status.HTTP_404_NOT_FOUND)
+    if(current_user.userType != 'admin'):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Unauthorized")
+    user = session.get(User, uuid)
+    if user is not None:
+        return UserFB(**user.dict())
+    else:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f'Error. User uuid:{uuid} Not found')
+        # return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= {'message' : f'Error. User id:{id} Not found'})
+
+@adminuser_router.delete(path='/deluser/{uuid}',
+                         tags=['Admin'],
+                         response_model=dict,
+                         status_code=status.HTTP_200_OK)
+def delete_user(current_user: Annotated[User, Depends(get_current_user)],
+                uuid: UUID = Path(description="User ID to delete"),
+                session: Session = Depends(get_session)) -> dict:
+    
+    if(current_user.userType != 'admin'):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="User Unauthorized")
+    
+    user = session.get(User, uuid)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                            detail=f'Error. User uuid:{uuid} Not found')
+    session.delete(user)
+    session.commit()
+    return JSONResponse(content={'message':f'User uuid:{uuid} deleted'},status_code=status.HTTP_200_OK)

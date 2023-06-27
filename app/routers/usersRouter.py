@@ -1,12 +1,12 @@
 #FastAPI
 from fastapi import APIRouter, status, HTTPException
-from fastapi import Depends, Body, Query, Form, Path
+from fastapi import Depends, Body, Form
 from fastapi.responses import JSONResponse
 # SQLModel
-from sqlmodel import Session, select
+from sqlmodel import Session
 from sqlalchemy.exc import IntegrityError
 #Python
-from typing import Annotated, List
+from typing import Annotated
 from pydantic import SecretStr
 # APP
 from app.models.user import User, UserCreate, UserUpdate, UserFB
