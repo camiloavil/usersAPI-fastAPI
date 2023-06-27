@@ -40,7 +40,8 @@ def get_users(current_user: Annotated[User, Depends(get_current_user)],
         HTTPException: If the current user is not an admin.
     """
     if(current_user.userType != 'admin'):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Unauthorized")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="User Unauthorized")
     users = session.exec(select(User).limit(limit)).all()
     # users = session.exec(select(User).offset(offset).limit(limit)).all() #Doesn't Work check it
     return [UserFB(**user.dict()) for user in users]
@@ -51,11 +52,27 @@ def get_users(current_user: Annotated[User, Depends(get_current_user)],
                       response_model=UserFB, 
                       status_code=status.HTTP_200_OK)
 def getUserbyEmail(current_user: Annotated[User, Depends(get_current_user)],
-             email: EmailStr = Path(description='e-mail of the user to get', example='user@example.com'), 
+             email: EmailStr = Path(description='e-mail of the user to get', 
+                                    example='user@example.com'), 
              session: Session = Depends(get_session)) -> User:
+    """
+    Retrieves a user from the database based on their email address.
+    
+    Args:
+        current_user (Annotated[User, Depends(get_current_user)]): The currently authenticated user.
+        email (EmailStr): The email address of the user to retrieve.
+        session (Session): The database session to use.
+    
+    Returns:
+        User: The requested user object.
+    
+    Raises:
+        HTTPException: If the current user is not an admin, or if the requested user is not found.
+    """
 
     if(current_user.userType != 'admin'):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Unauthorized")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="User Unauthorized")
 
     print(f'User id:{email}')
     user = get_userDB_by_email(email)
@@ -64,7 +81,6 @@ def getUserbyEmail(current_user: Annotated[User, Depends(get_current_user)],
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail= f'Error. User e-mail: {email} Not found')
-        # return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= {'message' : f'Error. User id:{id} Not found'})
 
 
 @adminuser_router.get(path='/getuser/{uuid}', 
@@ -74,15 +90,30 @@ def getUserbyEmail(current_user: Annotated[User, Depends(get_current_user)],
 def getUserbyUUID(current_user: Annotated[User, Depends(get_current_user)],
              uuid: UUID = Path(description='UUID of the user to get'), 
              session: Session = Depends(get_session)) -> User:
+    """
+    Retrieves a user from the database by UUID.
+
+    Args:
+        current_user (Annotated[User, Depends(get_current_user)]): The current user making the request.
+        uuid (UUID, optional): The UUID of the user to retrieve. Defaults to Path(description='UUID of the user to get').
+        session (Session, optional): The database session. Defaults to Depends(get_session).
+
+    Returns:
+        User: The user object retrieved from the database.
+
+    Raises:
+        HTTPException: If the current user is not an admin or if the requested user is not found in the database.
+    """
 
     if(current_user.userType != 'admin'):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User Unauthorized")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="User Unauthorized")
     user = session.get(User, uuid)
     if user is not None:
         return UserFB(**user.dict())
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f'Error. User uuid:{uuid} Not found')
-        # return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= {'message' : f'Error. User id:{id} Not found'})
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                            detail= f'Error. User uuid:{uuid} Not found')
 
 @adminuser_router.delete(path='/deluser/{uuid}',
                          tags=['Admin'],
@@ -102,4 +133,5 @@ def delete_user(current_user: Annotated[User, Depends(get_current_user)],
                             detail=f'Error. User uuid:{uuid} Not found')
     session.delete(user)
     session.commit()
-    return JSONResponse(content={'message':f'User uuid:{uuid} deleted'},status_code=status.HTTP_200_OK)
+    return JSONResponse(content={'message':f'User uuid:{uuid} deleted'},
+                        status_code=status.HTTP_200_OK)
