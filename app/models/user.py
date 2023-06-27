@@ -33,6 +33,7 @@ class UserCreate(UserBase):
                 'email'     : 'user@example.com',
                 'password'  : 'MyPassword',
                 'city'      : 'City of User [Optional]',
+                'country'   : 'Country of User [Optional]',
             }
         }
 

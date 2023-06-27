@@ -1,9 +1,10 @@
+# FastAPI
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-
-from app.routers.users_router import users_router
-from app.DB.db import create_db_table
+# APP
+from app.routers.usersRouter import users_router
 from app.security.secureuser import secure_user
+from app.DB.db import create_db_table
 
 app = FastAPI()
 app.title = "Users API"

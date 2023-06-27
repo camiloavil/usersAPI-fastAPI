@@ -7,46 +7,13 @@ from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 #Python
 from typing import Annotated, List
+from pydantic import SecretStr
 # APP
 from app.models.user import User, UserCreate, UserUpdate, UserFB
-from app.models.response import ResponseModel
 from app.DB.db import get_session
 from app.security.secureuser import verify_password, get_password_hash, get_current_user
 
 users_router = APIRouter()
-
-@users_router.get('/users', tags=['users'], 
-                  response_model=List[User], 
-                  status_code=status.HTTP_200_OK
-                )
-def get_users(offset: int = Query(description='Offset of the query',default=1,ge=1),
-              limit: int = Query(description='Limit of data per request',default=100, lte=100), 
-              session: Session = Depends(get_session)) -> List[User]:
-    users = session.exec(select(User).offset(offset).limit(limit)).all()
-    return users
-
-@users_router.get(path='/user/{id}', 
-                  tags=['users'], 
-                  response_model=User, 
-                  status_code=status.HTTP_200_OK)
-def get_user(id: int = Path(description='ID of the user to get',example=1,ge=1), 
-             session: Session = Depends(get_session)) -> User:
-    """
-    Retrieves a user by their ID. 
-    
-    Args:
-        id (int): ID of the user to retrieve. Must be greater than or equal to 1.
-        session (Session): A SQLAlchemy Database Session dependency.
-
-    Returns:
-        User: A Pydantic User model representing the retrieved user.
-        JSONResponse (status_code=404): A JSON response containing an error message if the user is not found.
-    """
-    user = session.get(User, id)
-    if user is not None:
-        return user
-    else:
-        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= {'message' : f'Error. User id:{id} Not found'})
 
 @users_router.post(path='/user', 
                    tags=['Users'],
@@ -141,18 +108,40 @@ def disable_user(current_user: Annotated[User, Depends(get_current_user)],
     user_db = session.get(User, current_user.user_id)
     setattr(user_db,'is_active',False)
     session.commit()
-    return JSONResponse(content={'message':f'User id:{id} deleted'},status_code=status.HTTP_200_OK)
+    return JSONResponse(content={'message':f'User id:{str(current_user.user_id)} disabled'},status_code=status.HTTP_200_OK)
 
+@users_router.put(path='/myuser/changepassword', 
+                  tags=['Users'],
+                  response_model= dict, 
+                  status_code=status.HTTP_200_OK)
+def update_password_user(current_user: Annotated[User, Depends(get_current_user)],
+                         actual_password: SecretStr = Form(min_length=8, max_length=35),
+                         new_password: SecretStr = Form(min_length=8, max_length=35),
+                         session: Session = Depends(get_session)) -> dict:
+    """
+    Updates the password of the current user.
 
-# @users_router.delete(path='/user/{id}', 
-#                      tags=['AdminUsers'], 
-#                      response_model=ResponseModel, 
-#                      status_code=status.HTTP_200_OK)
-# def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), session: Session = Depends(get_session)) -> dict:
-#     user = session.get(User, id)
-#     if user is not None:
-#         session.delete(user)
-#         session.commit()
-#         return JSONResponse(content={'message':f'User id:{id} deleted'},status_code=status.HTTP_200_OK)
-#     else:
-#         return JSONResponse(content={'message':f'Error. User id:{id} Not found'}, status_code=status.HTTP_404_NOT_FOUND)
+    Args:
+        current_user (Annotated[User, Depends(get_current_user)]): The current user.
+        actual_password (SecretStr, optional): The current password. Defaults to Form(min_length=8, max_length=35).
+        new_password (SecretStr, optional): The new password. Defaults to Form(min_length=8, max_length=35).
+        session (Session, optional): The database session. Defaults to Depends(get_session).
+
+    Returns:
+        dict: A JSON response with a message and status code.
+    Raises:
+        HTTPException: If there is an error updating the password or if the actual password is incorrect.
+    """
+    if (verify_password(actual_password.get_secret_value(), current_user.pass_hash)):
+        try:
+            user_db = session.get(User,current_user.user_id)
+            setattr(user_db,'pass_hash',get_password_hash(new_password.get_secret_value()))
+            session.add(user_db)
+            session.commit()
+            session.refresh(user_db)
+            return JSONResponse(content={'message':f'User id:{str(current_user.user_id)} password updated'},
+                                status_code=status.HTTP_200_OK)
+        except IntegrityError:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="There is an error updating the password")
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect actual password")
+
