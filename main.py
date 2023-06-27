@@ -1,10 +1,11 @@
+# FastAPI
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-
-from app.routers.users_router import users_router
+# APP
 from app.routers.files_router import files_router
-from app.DB.db import create_db_table
+from app.routers.usersRouter import users_router
 from app.security.secureuser import secure_user
+from app.DB.db import create_db_table
 
 import time
 
