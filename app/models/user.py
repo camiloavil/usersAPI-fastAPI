@@ -9,17 +9,19 @@ from pydantic import SecretStr, EmailStr
 class UserBase(SQLModel):
     name  : str = Field(min_length=3, max_length=50)
     email : EmailStr = Field(unique=True)
-    city : Optional[str] = None
-    country : Optional[str] = None
+    city : Optional[str] = Field(default= None, min_length=3, max_length=50)
+    country : Optional[str] = Field(default= None, min_length=3, max_length=50)
 
 class User(UserBase, table=True):
     user_id : UUID = Field(default_factory=uuid4,
                            primary_key=True,
                            index=True,
                            nullable=False)
+    is_active : bool = Field(default=True,
+                             nullable=False)
     pass_hash : str
     initDate : datetime = Field(default_factory=datetime.now)
-    userType : str = Field(default='user')
+    userType : str = Field(default='free')
     idTelegram : Optional[int] = None
 
 class UserCreate(UserBase):
@@ -37,26 +39,27 @@ class UserCreate(UserBase):
 class UserFB(UserBase):
     user_id : UUID
     initDate : datetime
-    city : Optional[str] = None
-    idTelegram : Optional[int] = None
+    userType : str 
     class Config:
         schema_extra = {
             'example': {
+                'user_id'   : 'id of User',
                 'name'      : 'Name of User',
                 'email'     : 'email of User',
-                'user_id'   : 'id of User'
+                'initDate'  : 'Date of Creation of User',
+                'userType'  : 'Category of User',
             }
         }
 
 class UserUpdate(SQLModel):
-    name  : Optional[str] = None 
-    email : Optional[str] = None 
-    city  : Optional[str] = None
+    name  : Optional[str] = Field(min_length=3, max_length=50) 
+    country : Optional[str] = Field(default= None, min_length=3, max_length=50)
+    city  : Optional[str] = Field(default= None, min_length=3, max_length=50)
     class Config:
         schema_extra = {
             'example': {
-                'name' : 'Nombre',
-                'email' : 'user@example.com',
-                'city' : 'Ciudad'
+                'name'    : 'Name to change',
+                'country' : 'Country to change',
+                'city'    : 'City to change',
             }
         }

@@ -48,52 +48,6 @@ def get_user(id: int = Path(description='ID of the user to get',example=1,ge=1),
     else:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content= {'message' : f'Error. User id:{id} Not found'})
 
-@users_router.delete(path='/user/{id}', 
-                     tags=['users'], 
-                     response_model=ResponseModel, 
-                     status_code=status.HTTP_200_OK)
-def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), session: Session = Depends(get_session)) -> dict:
-    user = session.get(User, id)
-    if user is not None:
-        session.delete(user)
-        session.commit()
-        return JSONResponse(content={'message':f'User id:{id} deleted'},status_code=status.HTTP_200_OK)
-    else:
-        return JSONResponse(content={'message':f'Error. User id:{id} Not found'}, status_code=status.HTTP_404_NOT_FOUND)
-
-# @users_router.get('/users/', tags=['users'],response_model=List[User],status_code=status.HTTP_200_OK)
-# def get_user_by_city(city:str = Query(description='look for City',example='Neiva', min_length=2,max_length=20)) -> List[User]:
-#     data = [user for user in users if user['city'] == city]
-#     if len(data)==0:
-#         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND,content=data) #Not Found
-#     else:
-#         return JSONResponse(status_code=status.HTTP_200_OK,content=data) #Not Found
-
-@users_router.put('/user/{id}', tags=['users'],response_model=ResponseModel, status_code=status.HTTP_200_OK)
-def update_user(id:int = Path(description="User ID to modify",example=1,ge=1), user:UserUpdate = Body(), session: Session = Depends(get_session)) -> dict:
-    """
-    Updates a user in the database.
-
-    Args:
-        id (int): User ID to modify.
-        user (UserUpdate): The updated user data.
-        session (Session): SQLAlchemy session dependency.
-
-    Returns:
-        dict: A JSON response indicating if the user was updated correctly or not.
-    """
-    user_db = session.get(User,id)
-    if user_db is None:
-        return JSONResponse(content={'message':f'Error id:{id} not Found'},status_code=status.HTTP_404_NOT_FOUND)
-    user_data = user.dict(exclude_unset=True)
-    for key, value in user_data.items():
-        setattr(user_db,key,value)
-    session.add(user_db)
-    session.commit()
-    session.refresh(user_db)
-    return JSONResponse(content={'message':f'User id:{id} updated correctly'},status_code=status.HTTP_200_OK)
-
-
 @users_router.post(path='/user', 
                    tags=['Users'],
                    response_model=UserFB, 
@@ -138,3 +92,67 @@ async def info_User(current_user: Annotated[User, Depends(get_current_user)]):
     :return: UserFB - Information about the current user
     """
     return UserFB(**current_user.dict())
+
+# @users_router.put(path='/myuser/{id}', tags=['users'],response_model=ResponseModel, status_code=status.HTTP_200_OK)
+@users_router.put(path='/myuser', 
+                  tags=['Users'],
+                  response_model= UserFB, 
+                  status_code=status.HTTP_200_OK)
+def update_user(current_user: Annotated[User, Depends(get_current_user)],
+                newData: UserUpdate = Body(),
+                session: Session = Depends(get_session)) -> dict:
+    """
+    Updates the user information for the user with the given user ID. 
+
+    Args:
+        current_user (Annotated[User, Depends(get_current_user)]): The user making the request.
+        newData (UserUpdate = Body()): The new user information to update.
+
+    Returns:
+        A dictionary containing the updated user information.
+    """
+    newData_dict = newData.dict(exclude_unset=True)
+    user_db = session.get(User,current_user.user_id)
+    for key, value in newData_dict.items():
+        print(f'key:{key} value:{value}')
+        setattr(user_db,key,value)
+    session.add(user_db)
+    session.commit()
+    session.refresh(user_db)
+    return UserFB(**user_db.dict())
+    return JSONResponse(content={'message':f'User id:{id} updated correctly'},status_code=status.HTTP_200_OK)
+
+@users_router.delete(path='/myuser', 
+                     tags=['Users'], 
+                     response_model=dict, 
+                     status_code=status.HTTP_200_OK)
+def disable_user(current_user: Annotated[User, Depends(get_current_user)],
+                session: Session = Depends(get_session)) -> dict:
+    """
+    Deletes a user from the database by setting their 'is_active' attribute to False.
+    
+    Args:
+        current_user (Annotated[User, Depends(get_current_user)]): The current user making the request.
+        session (Session, optional): The SQLAlchemy session object. Defaults to Depends(get_session).
+        
+    Returns:
+        dict: A JSON response containing a message indicating the user was deleted, and a 200 HTTP status code.
+    """
+    user_db = session.get(User, current_user.user_id)
+    setattr(user_db,'is_active',False)
+    session.commit()
+    return JSONResponse(content={'message':f'User id:{id} deleted'},status_code=status.HTTP_200_OK)
+
+
+# @users_router.delete(path='/user/{id}', 
+#                      tags=['AdminUsers'], 
+#                      response_model=ResponseModel, 
+#                      status_code=status.HTTP_200_OK)
+# def delete_user(id:int = Path(description="User ID to delete",example=1,ge=1), session: Session = Depends(get_session)) -> dict:
+#     user = session.get(User, id)
+#     if user is not None:
+#         session.delete(user)
+#         session.commit()
+#         return JSONResponse(content={'message':f'User id:{id} deleted'},status_code=status.HTTP_200_OK)
+#     else:
+#         return JSONResponse(content={'message':f'Error. User id:{id} Not found'}, status_code=status.HTTP_404_NOT_FOUND)
