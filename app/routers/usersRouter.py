@@ -50,6 +50,7 @@ def create_user(user: UserCreate = Body(),
 
 @router.get(path="/myuser",
             response_model=UserFB,
+            status_code=status.HTTP_200_OK
             )
 async def info_User(current_user: Annotated[User, Depends(get_current_user)]):
     """

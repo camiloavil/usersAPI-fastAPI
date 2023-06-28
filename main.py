@@ -1,11 +1,11 @@
 # FastAPI
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, status, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 # APP
 from app.routers import filesRouter, usersRouter, adminRouter
 from app.security import secureuser
 from app.DB.db import create_db_table
-
+# Python
 import time
 
 app = FastAPI()
@@ -37,7 +37,9 @@ async def error_handler(request: Request, call_next):
 def on_startup():
     create_db_table()
 
-@app.get('/', tags=['home'])
+@app.get(path='/', 
+         tags=['home'],
+         status_code=status.HTTP_200_OK)
 def home():
     return HTMLResponse('<h1>Hello You</h1>')
 
