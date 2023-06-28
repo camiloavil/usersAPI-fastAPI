@@ -16,7 +16,7 @@ from app.DB.db import get_userDB_by_email
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_User_scheme = OAuth2PasswordBearer(tokenUrl=URL_USER_LOGIN)
 
-secure_user = APIRouter()
+router = APIRouter()
 
 def verify_password(plain_password: str, hashed_password: str):
     """
@@ -89,7 +89,7 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     return encoded_jwt
 
 
-@secure_user.post(path="/"+URL_USER_LOGIN,
+@router.post(path="/"+URL_USER_LOGIN,
                   response_model=dict,
                   tags=["Users"])
 async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):

@@ -14,13 +14,12 @@ from app.models.user import User, UserFB
 from app.DB.db import get_session, get_userDB_by_email
 from app.security.secureuser import get_current_user
 
-adminuser_router = APIRouter()
+router = APIRouter()
 
-@adminuser_router.get('/allusers', 
-                      tags=['Admin'], 
-                      response_model= List[UserFB], 
-                      status_code=status.HTTP_200_OK
-                )
+@router.get(path='/allusers', 
+            response_model= List[UserFB], 
+            status_code=status.HTTP_200_OK
+            )
 def get_users(current_user: Annotated[User, Depends(get_current_user)],
             #   offset: int = Query(description='Offset of the query',default=1,ge=1),
               limit: int = Query(description='Limit of data per request',default=100, lte=100), 
@@ -47,14 +46,14 @@ def get_users(current_user: Annotated[User, Depends(get_current_user)],
     return [UserFB(**user.dict()) for user in users]
 
 
-@adminuser_router.get(path='/getuser/email/{email}', 
-                      tags=['Admin'], 
-                      response_model=UserFB, 
-                      status_code=status.HTTP_200_OK)
+@router.get(path='/getuser/email/{email}', 
+            response_model=UserFB, 
+            status_code=status.HTTP_200_OK
+            )
 def getUserbyEmail(current_user: Annotated[User, Depends(get_current_user)],
-             email: EmailStr = Path(description='e-mail of the user to get', 
-                                    example='user@example.com'), 
-             session: Session = Depends(get_session)) -> User:
+                   email: EmailStr = Path(description='e-mail of the user to get', 
+                                          example='user@example.com'), 
+                    session: Session = Depends(get_session)) -> User:
     """
     Retrieves a user from the database based on their email address.
     
@@ -83,13 +82,12 @@ def getUserbyEmail(current_user: Annotated[User, Depends(get_current_user)],
                             detail= f'Error. User e-mail: {email} Not found')
 
 
-@adminuser_router.get(path='/getuser/{uuid}', 
-                      tags=['Admin'], 
-                      response_model=UserFB, 
-                      status_code=status.HTTP_200_OK)
+@router.get(path='/getuser/{uuid}', 
+            response_model=UserFB, 
+            status_code=status.HTTP_200_OK)
 def getUserbyUUID(current_user: Annotated[User, Depends(get_current_user)],
-             uuid: UUID = Path(description='UUID of the user to get'), 
-             session: Session = Depends(get_session)) -> User:
+                  uuid: UUID = Path(description='UUID of the user to get'), 
+                  session: Session = Depends(get_session)) -> User:
     """
     Retrieves a user from the database by UUID.
 
@@ -115,10 +113,9 @@ def getUserbyUUID(current_user: Annotated[User, Depends(get_current_user)],
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail= f'Error. User uuid:{uuid} Not found')
 
-@adminuser_router.delete(path='/deluser/{uuid}',
-                         tags=['Admin'],
-                         response_model=dict,
-                         status_code=status.HTTP_200_OK)
+@router.delete(path='/deluser/{uuid}',
+               response_model=dict,
+               status_code=status.HTTP_200_OK)
 def delete_user(current_user: Annotated[User, Depends(get_current_user)],
                 uuid: UUID = Path(description="User ID to delete"),
                 session: Session = Depends(get_session)) -> dict:

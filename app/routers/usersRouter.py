@@ -13,10 +13,9 @@ from app.models.user import User, UserCreate, UserUpdate, UserFB
 from app.DB.db import get_session
 from app.security.secureuser import verify_password, get_password_hash, get_current_user
 
-users_router = APIRouter()
+router = APIRouter()
 
-@users_router.post(path='/user', 
-                   tags=['Users'],
+@router.post(path='/newuser', 
                    response_model=UserFB, 
                    status_code=status.HTTP_201_CREATED)
 def create_user(user: UserCreate = Body(), 
@@ -49,9 +48,9 @@ def create_user(user: UserCreate = Body(),
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Internal Error")
     return UserFB(**user_db.dict())
 
-@users_router.get(path="/myuser",
-                  response_model=UserFB,
-                  tags=["Users"])
+@router.get(path="/myuser",
+            response_model=UserFB,
+            )
 async def info_User(current_user: Annotated[User, Depends(get_current_user)]):
     """
     Get information about the current user.
@@ -60,9 +59,8 @@ async def info_User(current_user: Annotated[User, Depends(get_current_user)]):
     """
     return UserFB(**current_user.dict())
 
-# @users_router.put(path='/myuser/{id}', tags=['users'],response_model=ResponseModel, status_code=status.HTTP_200_OK)
-@users_router.put(path='/myuser', 
-                  tags=['Users'],
+# @router.put(path='/myuser/{id}', tags=['users'],response_model=ResponseModel, status_code=status.HTTP_200_OK)
+@router.put(path='/myuser', 
                   response_model= UserFB, 
                   status_code=status.HTTP_200_OK)
 def update_user(current_user: Annotated[User, Depends(get_current_user)],
@@ -89,10 +87,9 @@ def update_user(current_user: Annotated[User, Depends(get_current_user)],
     return UserFB(**user_db.dict())
     return JSONResponse(content={'message':f'User id:{id} updated correctly'},status_code=status.HTTP_200_OK)
 
-@users_router.delete(path='/myuser', 
-                     tags=['Users'], 
-                     response_model=dict, 
-                     status_code=status.HTTP_200_OK)
+@router.delete(path='/myuser',
+               response_model=dict,
+               status_code=status.HTTP_200_OK)
 def disable_user(current_user: Annotated[User, Depends(get_current_user)],
                 session: Session = Depends(get_session)) -> dict:
     """
@@ -110,10 +107,9 @@ def disable_user(current_user: Annotated[User, Depends(get_current_user)],
     session.commit()
     return JSONResponse(content={'message':f'User id:{str(current_user.user_id)} disabled'},status_code=status.HTTP_200_OK)
 
-@users_router.put(path='/myuser/changepassword', 
-                  tags=['Users'],
-                  response_model= dict, 
-                  status_code=status.HTTP_200_OK)
+@router.put(path='/myuser/changepassword', 
+            response_model= dict,
+            status_code=status.HTTP_200_OK)
 def update_password_user(current_user: Annotated[User, Depends(get_current_user)],
                          actual_password: SecretStr = Form(min_length=8, max_length=35),
                          new_password: SecretStr = Form(min_length=8, max_length=35),
