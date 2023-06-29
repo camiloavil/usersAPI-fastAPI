@@ -1,3 +1,11 @@
 __pycache__
 env
 *.sqlite
+*.db
+*.log
+*.ini
+*.json
+*.yml
+*.yaml
+.pytest_cache
+ 
