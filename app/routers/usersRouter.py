@@ -40,7 +40,7 @@ def create_user(user: UserCreate = Body(),
         session.add(user_db)
         session.commit()
         session.refresh(user_db)
-        print(str(user_db))
+        # print(str(user_db))
     except IntegrityError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User already exists")
     except Exception as e:
