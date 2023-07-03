@@ -2,6 +2,8 @@
 from fastapi import APIRouter, HTTPException, status
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+# SQLModel
+from sqlmodel import Session
 # PassLib
 from passlib.context import CryptContext
 # Jose
@@ -11,7 +13,8 @@ from typing import Annotated, Union
 from datetime import datetime, timedelta
 # APP
 from app.security import URL_USER_LOGIN, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
-from app.DB.db import get_userDB_by_email
+from app.DB.querys import get_userDB_by_email
+from app.DB.db import get_session
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_User_scheme = OAuth2PasswordBearer(tokenUrl=URL_USER_LOGIN)
@@ -43,7 +46,8 @@ def get_password_hash(password: str):
     """
     return pwd_context.hash(password.encode('utf-8'))
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_User_scheme)]):
+def get_current_user(token: Annotated[str, Depends(oauth2_User_scheme)], 
+                           session: Session = Depends(get_session)):
     """
     Asynchronously retrieves a user object from the database based on the provided bearer token.
 
@@ -63,7 +67,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_User_scheme)]):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = get_userDB_by_email(username=username)
+    user = get_userDB_by_email(username=username,session=session)
     if user is None:
         raise credentials_exception
     return user
@@ -92,7 +96,8 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
 @router.post(path="/"+URL_USER_LOGIN,
                   response_model=dict,
                   tags=["Users"])
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+          session: Session = Depends(get_session)):
     """
     Authenticates a user by checking the validity of their provided credentials 
     and returns an access token if successful.
@@ -107,7 +112,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                           detail="Could not validate credentials",
                                           headers={"WWW-Authenticate": "Bearer"},)
-    user_db = get_userDB_by_email(form_data.username)
+    user_db = get_userDB_by_email(form_data.username, session)
 
     if user_db is None:
         raise credentials_exception

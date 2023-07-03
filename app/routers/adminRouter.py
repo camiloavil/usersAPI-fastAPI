@@ -11,7 +11,8 @@ from typing import List
 from uuid import UUID
 # APP
 from app.models.user import User, UserFB
-from app.DB.db import get_session, get_userDB_by_email
+from app.DB.db import get_session
+from app.DB.querys import get_userDB_by_email
 from app.security.secureuser import get_current_user
 
 router = APIRouter()
@@ -74,7 +75,7 @@ def getUserbyEmail(current_user: Annotated[User, Depends(get_current_user)],
                             detail="User Unauthorized")
 
     print(f'User id:{email}')
-    user = get_userDB_by_email(email)
+    user = get_userDB_by_email(email,session=session)
     if user is not None:
         return UserFB(**user.dict())
     else:

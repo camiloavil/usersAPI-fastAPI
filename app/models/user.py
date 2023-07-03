@@ -19,10 +19,12 @@ class User(UserBase, table=True):
                            nullable=False)
     is_active : bool = Field(default=True,
                              nullable=False)
-    pass_hash : str
-    initDate : datetime = Field(default_factory=datetime.now)
-    userType : str = Field(default='free')
+    initDate : datetime = Field(default_factory=datetime.now,
+                                nullable=False)
+    userType : str = Field(default='free',
+                           nullable=False)
     idTelegram : Optional[int] = None
+    pass_hash : str 
 
 class UserCreate(UserBase):
     password : SecretStr = Field(min_length=8, max_length=50)

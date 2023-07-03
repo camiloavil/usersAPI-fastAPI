@@ -80,7 +80,7 @@ def update_user(current_user: Annotated[User, Depends(get_current_user)],
     newData_dict = newData.dict(exclude_unset=True)
     user_db = session.get(User,current_user.user_id)
     for key, value in newData_dict.items():
-        print(f'key:{key} value:{value}')
+        # print(f'key:{key} value:{value}')
         setattr(user_db,key,value)
     session.add(user_db)
     session.commit()
